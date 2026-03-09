@@ -34,3 +34,48 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+karuna-tech-website/
+├── app/
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx              # Root layout (includes Header & Footer)
+│   ├── page.tsx                 # Homepage (with SplashCursor)
+│   ├── services/
+│   │   └── page.tsx
+│   ├── projects/
+│   │   └── page.tsx
+│   ├── about/
+│   │   └── page.tsx
+│   └── contact/
+│       └── page.tsx
+├── components/
+│   ├── layout/
+│   │   ├── Header.tsx
+│   │   └── Footer.tsx
+│   ├── reactbits/               # All React Bits components
+│   │   ├── Particles.tsx
+│   │   ├── GradientText.tsx
+│   │   ├── SpotlightCard.tsx
+│   │   ├── MagnetLines.tsx
+│   │   ├── AnimatedGallery.tsx
+│   │   ├── SplitText.tsx
+│   │   ├── Typewriter.tsx
+│   │   ├── DecayCard.tsx
+│   │   ├── InputField.tsx
+│   │   ├── SplashCursor.tsx      # <-- New component
+│   │   └── ...
+│   └── ui/                        # shadcn/ui components
+│       └── button.tsx              # Installed via shadcn CLI
+├── hooks/
+│   └── useMediaQuery.ts
+├── public/
+│   └── projects/
+│       ├── car-rental.jpg
+│       ├── hydroponic.jpg
+│       ├── spa.jpg
+│       └── food-app.jpg
+├── tailwind.config.js
+├── tsconfig.json
+└── package.json
