@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import React, { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, useMotionValue, useAnimationFrame, useTransform } from 'motion/react';
 
 interface GradientTextProps {
@@ -10,6 +10,7 @@ interface GradientTextProps {
   direction?: 'horizontal' | 'vertical' | 'diagonal';
   pauseOnHover?: boolean;
   yoyo?: boolean;
+  as?: React.ElementType;
 }
 
 export default function GradientText({
@@ -20,7 +21,8 @@ export default function GradientText({
   showBorder = false,
   direction = 'horizontal',
   pauseOnHover = false,
-  yoyo = true
+  yoyo = true,
+  as: Component = 'div',
 }: GradientTextProps) {
   const [isPaused, setIsPaused] = useState(false);
   const progress = useMotionValue(0);
@@ -54,7 +56,6 @@ export default function GradientText({
         progress.set(100 - ((cycleTime - animationDuration) / animationDuration) * 100);
       }
     } else {
-      // Continuously increase position for seamless looping
       progress.set((elapsedRef.current / animationDuration) * 100);
     }
   });
@@ -70,7 +71,6 @@ export default function GradientText({
     } else if (direction === 'vertical') {
       return `50% ${p}%`;
     } else {
-      // For diagonal, move only horizontally to avoid interference patterns
       return `${p}% 50%`;
     }
   });
@@ -85,7 +85,6 @@ export default function GradientText({
 
   const gradientAngle =
     direction === 'horizontal' ? 'to right' : direction === 'vertical' ? 'to bottom' : 'to bottom right';
-  // Duplicate first color at the end for seamless looping
   const gradientColors = [...colors, colors[0]].join(', ');
 
   const gradientStyle = {
@@ -94,8 +93,10 @@ export default function GradientText({
     backgroundRepeat: 'repeat'
   };
 
+  const MotionComponent = motion.create(Component);
+
   return (
-    <motion.div
+    <MotionComponent
       className={`relative mx-auto flex max-w-fit flex-row items-center justify-center rounded-[1.25rem] font-medium backdrop-blur transition-shadow duration-500 overflow-hidden cursor-pointer ${showBorder ? 'py-1 px-2' : ''} ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -123,6 +124,6 @@ export default function GradientText({
       >
         {children}
       </motion.div>
-    </motion.div>
+    </MotionComponent>
   );
 }

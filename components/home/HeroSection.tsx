@@ -41,10 +41,11 @@ export default function HeroSection({ mounted, isMobile }: HeroSectionProps) {
           Software Studio · Est. 2020
         </p>
         <GradientText
+          as="h1"
           colors={['#4f46e5', '#7c3aed', '#06b6d4', '#4f46e5']}
           animationSpeed={10}
           showBorder={false}
-          className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight  mb-6 leading-tight"
+          className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-6 leading-tight"
         >
           Karuna Technologies
         </GradientText>
