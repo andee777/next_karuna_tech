@@ -1,4 +1,5 @@
 import Script from 'next/script';
+import { testimonials } from './home/data';
 
 export default function StructuredData() {
   const organizationSchema = {
