@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Footer from '@/components/layout/Footer';
 import Navbar from '@/components/layout/Navbar';
+import StructuredData from '@/components/StructuredData';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   description: 'Professional web design, website hosting, database hosting, automation services, and mobile app development. We build smarter digital solutions for businesses.',
   
   // Canonical URL
-  metadataBase: new URL('https://karunatechnologies.com'),
+  metadataBase: new URL('https://karunatech.ca'),
   alternates: {
     canonical: '/',
   },
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Karuna Technologies - Digital Innovation Partner',
     description: 'Web design, hosting, automation, and mobile app development services.',
-    url: 'https://karunatechnologies.com',
+    url: 'https://karunatech.ca',
     siteName: 'Karuna Technologies',
     images: [
       {
@@ -79,6 +80,7 @@ export default function RootLayout({
         <Navbar />
         <main className="min-h-screen">{children}</main>
         <Footer />
+        <StructuredData />
       </body>
     </html>
   );
