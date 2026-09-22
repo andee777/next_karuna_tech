@@ -14,8 +14,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly', // Good for a homepage
       priority: 1,
     },
-    // Although your site is a single page, you can include the sections
-    // as separate URLs. This is perfectly acceptable.
+    {
+      url: `${baseUrl}/new-project`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    // The rest of the site is a single page — include its sections as
+    // separate URLs too. This is perfectly acceptable.
     {
       url: `${baseUrl}/#services`,
       lastModified: currentDate,

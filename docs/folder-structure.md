@@ -2,11 +2,18 @@
 
 ```
 next_karuna_tech/
+├── .claude
+│   └── launch.json
 ├── app
+│   ├── new-project
+│   │   ├── actions.ts
+│   │   ├── page.tsx
+│   │   └── ProjectForm.tsx
 │   ├── favicon.ico
 │   ├── globals.css
 │   ├── layout.tsx
-│   └── page.tsx
+│   ├── page.tsx
+│   └── sitemap.ts
 ├── components
 │   ├── home
 │   │   ├── CtaSection.tsx
@@ -24,27 +31,16 @@ next_karuna_tech/
 │   │   ├── button.tsx
 │   │   ├── input.tsx
 │   │   ├── label.tsx
-│   │   ├── navigation-menu.tsx
+│   │   ├── select.tsx
 │   │   └── textarea.tsx
-│   ├── AnimatedContent.tsx
-│   ├── AnimatedCounter.tsx
-│   ├── Carousel.tsx
-│   ├── DecayCard.tsx
-│   ├── GooeyNav.tsx
+│   ├── GlassSurface.tsx
 │   ├── GradientText.tsx
-│   ├── MagicBento.tsx
-│   ├── MagnetLines.css
-│   ├── MagnetLines.jsx
-│   ├── Marquee.tsx
-│   ├── Masonry.css
-│   ├── Masonry.jsx
+│   ├── MagnetLines.tsx
 │   ├── Particles.tsx
+│   ├── Plasma.tsx
 │   ├── SplashCursor.tsx
-│   ├── SplitText.jsx
-│   ├── SpotlightCard.css
-│   ├── SpotlightCard.jsx
 │   ├── StarBorder.tsx
-│   ├── TextType.tsx
+│   ├── StructuredData.tsx
 │   ├── theme-provider.tsx
 │   ├── theme-toggle.tsx
 │   └── TiltedCard.tsx
@@ -58,12 +54,16 @@ next_karuna_tech/
 │   ├── file.svg
 │   ├── globe.svg
 │   ├── next.svg
+│   ├── robots.txt
 │   ├── vercel.svg
 │   └── window.svg
 ├── scripts
 │   ├── folder_tree_watcher.py
 │   └── generate_folder_tree.py
+├── .env.example
 ├── .gitignore
+├── AGENTS.md
+├── CLAUDE.md
 ├── components.json
 ├── eslint.config.mjs
 ├── next-env.d.ts

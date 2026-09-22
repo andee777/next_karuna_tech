@@ -16,19 +16,16 @@ export default function HeroSection({ mounted, isMobile }: HeroSectionProps) {
       {!mounted && (
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-background to-purple-950" />
       )}
-      {mounted && !isMobile && (
+      {mounted && (
         <div className="absolute inset-0 pointer-events-none">
           <Particles
             particleColors={['#4f46e5', '#7c3aed', '#06b6d4']}
-            particleCount={220}
+            particleCount={isMobile ? 80 : 220}
             particleSpread={10}
             speed={0.08}
             className="w-full h-full"
           />
         </div>
-      )}
-      {mounted && isMobile && (
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-background to-purple-950" />
       )}
 
       {/* Radial glow */}

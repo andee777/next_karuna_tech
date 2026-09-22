@@ -17,10 +17,12 @@ export default function ServicesSection({ mounted, isMobile }: ServicesSectionPr
 
   return (
     <section ref={sectionRef} id="services" className="relative py-32 overflow-hidden">
-      {/* SplashCursor — only mounted on client, only on desktop, scoped to this section.
-          containerRef={sectionRef} routes all mouse events through the section element
-          so the effect is not blocked by the z-10 content layer above the canvas. */}
-      {mounted && !isMobile && (
+      {/* SplashCursor — only mounted on client, scoped to this section.
+          containerRef={sectionRef} routes all mouse/touch events through the section
+          element so the effect is not blocked by the z-10 content layer above the
+          canvas. Resolution is lowered on mobile to keep the fluid sim cheap on
+          weaker GPUs; touch drag drives it there instead of mouse move. */}
+      {mounted && (
         <SplashCursor
           scoped
           containerRef={sectionRef}
@@ -29,6 +31,8 @@ export default function ServicesSection({ mounted, isMobile }: ServicesSectionPr
           VELOCITY_DISSIPATION={2.5}
           BACK_COLOR={{ r: 0, g: 0, b: 0 }}
           TRANSPARENT
+          SIM_RESOLUTION={isMobile ? 64 : 128}
+          DYE_RESOLUTION={isMobile ? 640 : 1440}
         />
       )}
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import MagnetLines from '@/components/MagnetLines';
 import GlassSurface from '@/components/GlassSurface';
 
@@ -67,8 +68,8 @@ export default function CtaSection() {
                 {/* Native CSS glass pills — GlassSurface requires explicit px dimensions
                     and breaks with auto sizing; backdrop-filter works correctly here */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <a
-                    href="#"
+                  <Link
+                    href="/new-project"
                     className="cursor-pointer px-8 py-3 text-base font-semibold text-foreground whitespace-nowrap rounded-full"
                     style={{
                       backdropFilter: 'blur(16px) saturate(1.8) brightness(1.15)',
@@ -78,7 +79,7 @@ export default function CtaSection() {
                     }}
                   >
                     Start a Conversation
-                  </a>
+                  </Link>
 
                   <a
                     href="mailto:info@karunatech.ca"
@@ -109,9 +110,9 @@ export default function CtaSection() {
                   Tell us what you're building — we'll respond within 48 hours with a tailored plan and honest estimate.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <a href="#" className="cursor-pointer px-8 py-3 text-base font-semibold text-foreground rounded-full border border-white/20">
+                  <Link href="/new-project" className="cursor-pointer px-8 py-3 text-base font-semibold text-foreground rounded-full border border-white/20">
                     Start a Conversation
-                  </a>
+                  </Link>
                   <a href="mailto:info@karunatech.ca" className="cursor-pointer px-8 py-3 text-base text-foreground/80 rounded-full border border-white/10">
                     info@karunatech.ca
                   </a>
