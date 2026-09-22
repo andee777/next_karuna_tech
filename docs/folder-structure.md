@@ -42,8 +42,7 @@ next_karuna_tech/
 │   ├── StarBorder.tsx
 │   ├── StructuredData.tsx
 │   ├── theme-provider.tsx
-│   ├── theme-toggle.tsx
-│   └── TiltedCard.tsx
+│   └── theme-toggle.tsx
 ├── docs
 │   └── folder-structure.md
 ├── hooks

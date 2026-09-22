@@ -74,7 +74,7 @@ next_karuna_tech/
 │   ├── theme-provider.tsx     # next-themes wrapper
 │   ├── theme-toggle.tsx       # Light/dark toggle button
 │   └── *.tsx                  # Standalone animated/visual components sourced from reactbits.dev:
-│                               # Particles, SplashCursor, MagnetLines, GlassSurface, TiltedCard,
+│                               # Particles, SplashCursor, MagnetLines, GlassSurface,
 │                               # StarBorder, GradientText — see "Vendored components" below
 ├── hooks/
 │   └── useMediaQuery.ts       # Client-side matchMedia hook, used for the isMobile flag
@@ -114,13 +114,40 @@ Follow this same pattern if you add a new section with a heavy client-only effec
 ### Vendored animated components
 
 Files directly under `components/` (not in `home/`, `layout/`, or `ui/`) — `Particles`,
-`SplashCursor`, `MagnetLines`, `GlassSurface`, `TiltedCard`, `StarBorder`, `GradientText`,
+`SplashCursor`, `MagnetLines`, `GlassSurface`, `StarBorder`, `GradientText`,
 etc. — are self-contained visual components adapted from the
 [reactbits.dev](https://reactbits.dev) registry (see the `registries` entry in
 [`components.json`](components.json)). They're vendored (copied into the repo, not
 installed as a dependency) so their internals can be freely edited. When changing one,
 check every usage first (`grep` its name across `components/home/`) since the same
 component is often reused with different props.
+
+### Dark mode is the default theme — and it must stay wired up
+
+`app/layout.tsx` wraps the app in `<ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>`
+(from `components/theme-provider.tsx`, a thin `next-themes` wrapper). This mounting is
+load-bearing: without it, `next-themes` never applies the `.dark` class to `<html>`, the
+`ThemeToggle` button silently does nothing, and the site is stuck rendering its `:root`
+(light) CSS variables — which breaks the look of most sections, since `border-white/8`,
+`bg-white/3`, `bg-white/5`, etc. (used throughout `Navbar`, `Footer`, `ServicesSection`,
+`TestimonialsSection`, `WorkSection`, `CtaSection`, ...) are literal white-at-low-opacity
+overlays designed to read as a subtle glass effect against a **dark** background — on a
+white background they're nearly invisible, and every "card" looks flat and washed out.
+If you ever refactor the root layout, keep `ThemeProvider` mounted there.
+
+### `WorkSection`'s editorial case-study layout
+
+Each project in `components/home/WorkSection.tsx` renders as a full-width row (image
+panel + content, alternating sides via `md:flex-row-reverse` on odd rows), not a photo
+grid — the section previously used hotlinked Unsplash stock photos, which looked
+inconsistent with the rest of the page's dark, indigo/purple/cyan, photography-free
+design language. Each row's visual panel is built from plain CSS instead: a subtle
+single-color corner glow (`PROJECT_META[i].glow`) reusing the same blurred-circle
+technique as `HeroSection`'s background glow, the same faint grid pattern as
+`ServicesSection`, and a large low-opacity index numeral. No `<img>`, no external
+network request, no per-card asset to source. `TiltedCard` (the 3D mouse-tilt vendored
+component this section used to render project photos in) was removed from the repo
+entirely once this was its only caller.
 
 ### The `/new-project` inquiry form
 
@@ -144,12 +171,13 @@ The site targets everything from a 320px phone to wide desktop monitors:
   as the primary mobile/desktop split — matching the `useMediaQuery` hook above.
 - `Navbar` collapses into a hamburger menu below `md` (nav links, theme toggle, and
   the CTA move into a slide-down panel).
-- Components that need fixed pixel dimensions (e.g. `TiltedCard` in `WorkSection`)
-  are wrapped in a sized container using `aspect-ratio` and percentage-based props
-  instead of hardcoded pixel widths, so they scale down with their grid column.
-- Always sanity-check new sections at 320–375px width — `TiltedCard`, `GlassSurface`,
-  and other vendored components expect explicit pixel dimensions by default and will
-  overflow the viewport if given a raw desktop-sized value.
+- Components that need fixed pixel dimensions (e.g. `GlassSurface` in `CtaSection`)
+  are given percentage-based props (`width="100%"`) inside a container whose size is
+  set by layout classes, instead of hardcoded pixel widths — so they scale down with
+  their column instead of overflowing.
+- Always sanity-check new sections at 320–375px width — the vendored components expect
+  explicit pixel dimensions by default and will overflow the viewport if given a raw
+  desktop-sized value.
 
 ### SEO
 

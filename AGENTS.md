@@ -74,7 +74,7 @@ section that adds a client-only visual effect.
 ### Vendored animation components
 
 Files directly under `components/` (not `home/`, `layout/`, or `ui/`) —
-`Particles`, `SplashCursor`, `MagnetLines`, `GlassSurface`, `TiltedCard`, `StarBorder`,
+`Particles`, `SplashCursor`, `MagnetLines`, `GlassSurface`, `StarBorder`,
 `GradientText` — are copied-in (not npm-installed) components originally sourced from
 the [reactbits.dev](https://reactbits.dev) registry, referenced under `registries` in
 `components.json`. Because they're vendored, their internals can be freely edited, but
@@ -82,13 +82,28 @@ several are reused across multiple sections with different props — grep for a
 component's name across `components/home/` before changing its prop contract.
 
 These components generally expect explicit pixel `width`/`height` props rather than
-being intrinsically responsive (e.g. `TiltedCard`'s `containerWidth`/`containerHeight`/
-`imageWidth`/`imageHeight`). Never pass a raw desktop pixel value (e.g. `"640px"`)
-directly — on a narrow viewport it overflows the page horizontally. Instead size the
-component from its actual container: wrap it in a `div` with `w-full` (+ `max-w-[Npx]`
-if needed) and a CSS `aspect-ratio` matching the component's native aspect ratio, then
-pass `"100%"` for width/height props so the component fills that wrapper. See
-`components/home/WorkSection.tsx` for the pattern in use.
+being intrinsically responsive (e.g. `GlassSurface`'s `width`/`height`, used by
+`CtaSection`). Never pass a raw desktop pixel value (e.g. `"640px"`) directly — on a
+narrow viewport it overflows the page horizontally. Instead size the component from its
+actual container: wrap it in a `div` with `w-full` (+ `max-w-[Npx]` if needed), then pass
+`"100%"` for width/height props so the component fills that wrapper.
+
+`TiltedCard` (a 3D mouse-tilt image component, formerly used by `WorkSection` for its
+project photos) was removed from the repo — `WorkSection` now builds its visual panels
+from plain CSS instead of a photo (see below), which was its only caller.
+
+### `WorkSection`'s editorial case-study layout
+
+Each project renders as a full-width row (visual panel + content, alternating sides via
+`md:flex-row-reverse` on odd rows), not a photo grid. It previously used hotlinked
+Unsplash stock photos, which clashed with the rest of the page's dark,
+indigo/purple/cyan, photography-free design language — the visual panel is now built
+from plain CSS: a single-color corner glow per project (`PROJECT_META[i].glow`, reusing
+`HeroSection`'s blurred-circle technique), the same faint grid pattern as
+`ServicesSection`, and a large low-opacity index numeral. No image asset, no network
+request, no per-project art to source when adding a 5th project — just add an entry to
+both `featuredProjects` (`components/home/data.ts`) and `PROJECT_META`
+(`WorkSection.tsx`).
 
 ### The `/new-project` inquiry form
 
@@ -125,10 +140,22 @@ repo.
 
 Tailwind CSS v4, configured entirely in `app/globals.css` (`@import "tailwindcss"`, a
 `@theme inline` block, `:root`/`.dark` CSS variables for the color tokens) — there is no
-`tailwind.config.js`. Dark mode is a `.dark` class toggle (`next-themes`,
-`components/theme-provider.tsx` / `theme-toggle.tsx`), applied via the
+`tailwind.config.js`. Dark mode is a `.dark` class toggle (`next-themes`), applied via the
 `@custom-variant dark (&:is(.dark *))` directive. `lib/utils.ts` exports `cn()`
 (`clsx` + `tailwind-merge`) — use it whenever merging conditional class names.
+
+**Dark is the default and primary theme, and `ThemeProvider` mounting is load-bearing.**
+`app/layout.tsx` wraps the app in
+`<ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>`
+(`components/theme-provider.tsx`, a thin `next-themes` wrapper; `theme-toggle.tsx` is the
+UI toggle). This used to be defined but never actually rendered anywhere — which meant
+`.dark` was never applied to `<html>`, the toggle silently did nothing, and the site was
+permanently stuck on `:root` (light) tokens. That's a real problem here specifically
+because most sections use literal `white`-at-low-opacity utilities (`border-white/8`,
+`bg-white/3`, `bg-white/5`, etc. — throughout `Navbar`, `Footer`, `ServicesSection`,
+`TestimonialsSection`, `WorkSection`, `CtaSection`, ...) as a glass effect that assumes a
+**dark** background; on a white background they're nearly invisible and every card looks
+flat and washed out. If you ever touch the root layout, keep `ThemeProvider` mounted.
 
 Path alias `@/*` maps to the repo root (`tsconfig.json`), e.g. `@/components/...`,
 `@/lib/utils`, `@/hooks/...`.
