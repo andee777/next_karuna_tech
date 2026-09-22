@@ -119,30 +119,48 @@ metadata`) laying out two independent forms in a two-column grid at `lg` and up 
 full width below `lg`, form first in DOM order):
 
 - **`ProjectForm.tsx`** (Client Component, `useActionState`) → `submitProjectInquiry`
-  in `actions.ts`.
-- **`DiscoveryCallSection.tsx`** (static intro/card) wraps **`DiscoveryCallForm.tsx`**
-  (Client Component) → `submitDiscoveryCallRequest` in `discovery-actions.ts`. The form
-  collects name, email, a native `<input type="date">`, and a `<Select>` of fixed time
-  slots (`TIME_SLOTS` in `DiscoveryCallForm.tsx`) — not a real calendar/availability
-  integration, just a fixed set of choices; the copy says "we'll confirm by email" for
-  exactly that reason.
+  in `actions.ts`. Fields: name, email, phone (optional), preferred contact method
+  (`Select`, defaults to `"Email"` so it's never empty), company, budget, project type,
+  message. If `preferredContact === 'Phone'`, `phone` becomes required server-side
+  (`fieldErrors.phone`) — the UI doesn't block submission on this, only the action does.
+- **`DiscoveryCallSection.tsx`** (compact intro: icon + heading + one-line caption, no
+  bullet list — see below) wraps **`DiscoveryCallForm.tsx`** (Client Component) →
+  `submitDiscoveryCallRequest` in `discovery-actions.ts`. Fields: name, email, phone
+  (optional), a native `<input type="date">`, and a `<Select>` of fixed time slots
+  (`TIME_SLOTS`) — not a real calendar/availability integration, just a fixed set of
+  choices; the copy says "we'll confirm by email" for exactly that reason.
+
+**Keep the discovery-call column visually secondary to the project-inquiry form.** It
+used to carry a heavy intro (icon + heading + paragraph + 3-item bullet list) that made
+it look bigger/more prominent than the main form despite being the alternative option.
+`DiscoveryCallSection.tsx`'s intro is now a single compact row (icon + heading + one
+small caption line: "30 min · No pressure · No sales pitch") specifically to keep it
+lighter than the form beside it — don't re-expand it back into a multi-paragraph intro.
 
 **Both Server Actions follow the same pattern — replicate it for any new form:**
 validate → `getDb()` (`lib/db.ts`) → if `null` (`DATABASE_URL` unset) or the insert
 throws, return the fallback error state immediately, nothing to send → otherwise the
-row is saved, so the submission has already succeeded; attempt
-`resend.emails.send(...)` in its own `try`/`catch` that only `console.error`s on
-failure, never changes the returned state. The database insert is the source of truth;
-Resend is a courtesy confirmation. Table schemas: `db/schema.sql` — run it manually
-against the database; nothing in this repo runs migrations automatically.
+row is saved, so the submission has already succeeded; attempt up to two
+`resend.emails.send(...)` calls, each in its own `try`/`catch` that only
+`console.error`s on failure and never changes the returned state. The database insert
+is the source of truth; both emails are courtesy sends independent of each other (one
+failing doesn't skip or fail the other). Table schemas: `db/schema.sql` — run it
+manually against the database; nothing in this repo runs migrations automatically.
 
-**The confirmation email goes to the customer (`to: email`), never to the studio.**
-There is no "new lead" notification email — `CONTACT_TO_EMAIL` (default
-`info@karunatech.ca`) is used only as the `replyTo` on the customer's confirmation, so a
-reply lands in the studio's inbox instead of bouncing back to the customer themselves.
-Don't reintroduce a studio-facing notification email without being asked — that was
-deliberately removed. `.env.example` documents `DATABASE_URL` (required), and
-`RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL` (optional).
+**Two emails go out per submission, to two different people, for two different
+reasons:**
+1. **Confirmation → the customer** (`to: email`, the address they typed in). `replyTo`
+   is `CONTACT_TO_EMAIL` (default `info@karunatech.ca`), so a reply lands in the
+   studio's inbox instead of bouncing back to the customer themselves.
+2. **Notification → the site owner** (`to: process.env.OWNER_EMAIL`, no default —
+   skipped with a `console.error` if unset). `replyTo` is the *customer's* email this
+   time, so replying from the owner's inbox goes straight to the customer. Restates all
+   the fields the customer submitted (name, email, phone, message/booking details) —
+   this is the "new lead" notification; keep it whenever adding a new form.
+
+`.env.example` documents `DATABASE_URL` (required), and `RESEND_API_KEY`,
+`CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `OWNER_EMAIL` (all optional — but
+`OWNER_EMAIL` unset means owner notifications silently don't send).
 
 `lib/db.ts` uses `@neondatabase/serverless`'s `neon()` — a tagged-template `sql`
 function over HTTP, not a connection pool — so Server Actions (one-shot serverless
@@ -205,6 +223,18 @@ flat and washed out. If you ever touch the root layout, keep `ThemeProvider` mou
 
 Path alias `@/*` maps to the repo root (`tsconfig.json`), e.g. `@/components/...`,
 `@/lib/utils`, `@/hooks/...`.
+
+**`html { scrollbar-gutter: stable }` in `globals.css` is load-bearing — it stops the
+fixed `Navbar` from visibly shifting/growing whenever a Radix popover (`Select`, etc.)
+opens.** Radix locks scroll by setting `overflow: hidden !important` on `<body>` while
+open; via the body→viewport overflow-propagation quirk this removes the page's actual
+scrollbar, and `Navbar`'s `inset-x-0` (`fixed`) then recomputes against the now-wider,
+scrollbar-less viewport, growing by the scrollbar's width (~15px) for as long as the
+popover is open. `scrollbar-gutter: stable` must be on `html` specifically — it does
+**not** work set on `body` (verified: the propagation quirk carries `overflow` from
+body to the viewport but does not carry gutter reservation), and reproduces reliably by
+opening a shadcn `Select` and comparing `header.getBoundingClientRect().width` before
+vs. after.
 
 ### Responsive design
 

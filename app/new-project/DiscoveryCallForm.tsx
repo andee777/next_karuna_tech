@@ -58,22 +58,28 @@ export default function DiscoveryCallForm() {
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="dc-name">Name *</Label>
-        <Input id="dc-name" name="name" placeholder="Jane Doe" aria-invalid={!!state.fieldErrors?.name} />
-        {state.fieldErrors?.name && <p className="text-xs text-destructive">{state.fieldErrors.name}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="dc-name">Name *</Label>
+          <Input id="dc-name" name="name" placeholder="Jane Doe" aria-invalid={!!state.fieldErrors?.name} />
+          {state.fieldErrors?.name && <p className="text-xs text-destructive">{state.fieldErrors.name}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="dc-email">Email *</Label>
+          <Input
+            id="dc-email"
+            name="email"
+            type="email"
+            placeholder="jane@company.com"
+            aria-invalid={!!state.fieldErrors?.email}
+          />
+          {state.fieldErrors?.email && <p className="text-xs text-destructive">{state.fieldErrors.email}</p>}
+        </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="dc-email">Email *</Label>
-        <Input
-          id="dc-email"
-          name="email"
-          type="email"
-          placeholder="jane@company.com"
-          aria-invalid={!!state.fieldErrors?.email}
-        />
-        {state.fieldErrors?.email && <p className="text-xs text-destructive">{state.fieldErrors.email}</p>}
+        <Label htmlFor="dc-phone">Phone</Label>
+        <Input id="dc-phone" name="phone" type="tel" placeholder="Optional" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

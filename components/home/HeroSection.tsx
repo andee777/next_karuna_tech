@@ -36,7 +36,7 @@ export default function HeroSection({ mounted, isMobile }: HeroSectionProps) {
 
       <div className="relative z-10 text-center max-w-5xl mx-auto px-6">
         <p className="text-xs font-semibold tracking-[0.25em] uppercase text-indigo-400 mb-5">
-          Software Studio · Est. 2020
+          Software Studio · Est. 2023
         </p>
         <GradientText
           as="h1"

@@ -125,6 +125,16 @@
   }
   html {
     @apply font-sans;
+    /* Reserve the scrollbar's gutter permanently, on the root element
+       specifically. Radix (Select, Dropdown, etc.) locks scroll by setting
+       `overflow: hidden` on <body> while a popover is open, which — via the
+       body-to-viewport overflow propagation quirk — removes the page
+       scrollbar. Without this, the fixed Navbar (inset-x-0) recomputes
+       against the now-scrollbar-less viewport and visibly grows/shifts by
+       the scrollbar's width every time a dropdown opens or closes. Must be
+       on `html`, not `body` — the propagation quirk does not carry
+       scrollbar-gutter reservation from body to the viewport. */
+    scrollbar-gutter: stable;
   }
 }
 

@@ -19,6 +19,7 @@ export async function submitDiscoveryCallRequest(
 ): Promise<DiscoveryCallState> {
   const name = String(formData.get('name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  const phone = String(formData.get('phone') ?? '').trim();
   const preferredDate = String(formData.get('preferredDate') ?? '').trim();
   const preferredTime = String(formData.get('preferredTime') ?? '').trim();
   const notes = String(formData.get('notes') ?? '').trim();
@@ -45,19 +46,19 @@ export async function submitDiscoveryCallRequest(
 
   try {
     await sql`
-      insert into discovery_call_requests (name, email, preferred_date, preferred_time, notes)
-      values (${name}, ${email}, ${preferredDate}, ${preferredTime}, ${notes || null})
+      insert into discovery_call_requests (name, email, phone, preferred_date, preferred_time, notes)
+      values (${name}, ${email}, ${phone || null}, ${preferredDate}, ${preferredTime}, ${notes || null})
     `;
   } catch (err) {
     console.error('submitDiscoveryCallRequest: database insert failed', err);
     return { status: 'error', message: FALLBACK_MESSAGE };
   }
 
-  // Confirmation email to the customer is best-effort — the request is
-  // already saved, so a failure to send it shouldn't fail the submission.
+  // Both emails from here on are best-effort — the request is already saved,
+  // so a failure to send either one shouldn't fail the submission.
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error('submitDiscoveryCallRequest: RESEND_API_KEY is not set, skipping confirmation email');
+    console.error('submitDiscoveryCallRequest: RESEND_API_KEY is not set, skipping emails');
   } else {
     const formattedDate = new Date(`${preferredDate}T00:00:00Z`).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -66,13 +67,15 @@ export async function submitDiscoveryCallRequest(
       day: 'numeric',
       timeZone: 'UTC',
     });
+    const from = process.env.CONTACT_FROM_EMAIL || 'Karuna Technologies <onboarding@resend.dev>';
+    const resend = new Resend(apiKey);
 
+    // Confirmation to the customer. Replies land in the studio inbox, not back
+    // at the customer.
     try {
-      const resend = new Resend(apiKey);
       const { error } = await resend.emails.send({
-        from: process.env.CONTACT_FROM_EMAIL || 'Karuna Technologies <onboarding@resend.dev>',
+        from,
         to: email,
-        // Replies to the confirmation land in the studio inbox, not back at the customer.
         replyTo: process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca',
         subject: "We've received your discovery call request — Karuna Technologies",
         text: [
@@ -82,6 +85,7 @@ export async function submitDiscoveryCallRequest(
             + 'confirm the time (or suggest alternatives if needed) by email within one business day.',
           '',
           `Requested: ${formattedDate} at ${preferredTime} (Eastern Time)`,
+          ...(phone ? [`Phone: ${phone}`] : []),
           ...(notes ? [`Notes: ${notes}`] : []),
           '',
           "If you'd like to change anything, just reply to this email.",
@@ -90,9 +94,37 @@ export async function submitDiscoveryCallRequest(
         ].join('\n'),
       });
 
-      if (error) console.error('submitDiscoveryCallRequest: Resend returned an error', error);
+      if (error) console.error('submitDiscoveryCallRequest: Resend returned an error (customer email)', error);
     } catch (err) {
       console.error('submitDiscoveryCallRequest: unexpected error sending confirmation email', err);
+    }
+
+    // Notification to the site owner, independent of whether the customer
+    // email above succeeded. Reply-to is the customer, so replying goes
+    // straight back to them.
+    const ownerEmail = process.env.OWNER_EMAIL;
+    if (!ownerEmail) {
+      console.error('submitDiscoveryCallRequest: OWNER_EMAIL is not set, skipping owner notification');
+    } else {
+      try {
+        const { error } = await resend.emails.send({
+          from,
+          to: ownerEmail,
+          replyTo: email,
+          subject: `New discovery call request from ${name}`,
+          text: [
+            `Name: ${name}`,
+            `Email: ${email}`,
+            `Requested: ${formattedDate} at ${preferredTime} (Eastern Time)`,
+            ...(phone ? [`Phone: ${phone}`] : []),
+            ...(notes ? [`Notes: ${notes}`] : []),
+          ].join('\n'),
+        });
+
+        if (error) console.error('submitDiscoveryCallRequest: Resend returned an error (owner email)', error);
+      } catch (err) {
+        console.error('submitDiscoveryCallRequest: unexpected error sending owner notification', err);
+      }
     }
   }
 

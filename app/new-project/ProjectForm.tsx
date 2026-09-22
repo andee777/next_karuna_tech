@@ -68,6 +68,32 @@ export default function ProjectForm() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-2">
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            placeholder="Optional"
+            aria-invalid={!!state.fieldErrors?.phone}
+          />
+          {state.fieldErrors?.phone && <p className="text-sm text-destructive">{state.fieldErrors.phone}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="preferredContact">Preferred contact method</Label>
+          <Select name="preferredContact" defaultValue="Email">
+            <SelectTrigger id="preferredContact" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Email">Email</SelectItem>
+              <SelectItem value="Phone">Phone</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="space-y-2">
           <Label htmlFor="company">Company</Label>
           <Input id="company" name="company" placeholder="Optional" />
         </div>

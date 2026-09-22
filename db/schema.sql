@@ -5,14 +5,16 @@
 -- exposed to the browser.
 
 create table if not exists project_inquiries (
-  id           uuid primary key default gen_random_uuid(),
-  created_at   timestamptz not null default now(),
-  name         text not null,
-  email        text not null,
-  company      text,
-  project_type text,
-  budget       text,
-  message      text not null
+  id                uuid primary key default gen_random_uuid(),
+  created_at        timestamptz not null default now(),
+  name              text not null,
+  email             text not null,
+  phone             text,
+  preferred_contact text,
+  company           text,
+  project_type      text,
+  budget            text,
+  message           text not null
 );
 
 create table if not exists discovery_call_requests (
@@ -20,6 +22,7 @@ create table if not exists discovery_call_requests (
   created_at     timestamptz not null default now(),
   name           text not null,
   email          text not null,
+  phone          text,
   preferred_date date not null,
   preferred_time text not null,
   notes          text

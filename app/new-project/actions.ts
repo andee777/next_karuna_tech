@@ -6,7 +6,7 @@ import { getDb } from '@/lib/db';
 export interface ProjectInquiryState {
   status: 'idle' | 'success' | 'error';
   message: string;
-  fieldErrors?: Partial<Record<'name' | 'email' | 'message', string>>;
+  fieldErrors?: Partial<Record<'name' | 'email' | 'message' | 'phone', string>>;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,6 +19,8 @@ export async function submitProjectInquiry(
 ): Promise<ProjectInquiryState> {
   const name = String(formData.get('name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  const phone = String(formData.get('phone') ?? '').trim();
+  const preferredContact = String(formData.get('preferredContact') ?? '').trim() || 'Email';
   const company = String(formData.get('company') ?? '').trim();
   const projectType = String(formData.get('projectType') ?? '').trim();
   const budget = String(formData.get('budget') ?? '').trim();
@@ -29,6 +31,9 @@ export async function submitProjectInquiry(
   if (!email) fieldErrors.email = 'Please enter your email.';
   else if (!EMAIL_RE.test(email)) fieldErrors.email = 'Please enter a valid email address.';
   if (!message) fieldErrors.message = 'Tell us a bit about your project.';
+  if (preferredContact === 'Phone' && !phone) {
+    fieldErrors.phone = "Add a phone number, or switch your preferred contact method to email.";
+  }
 
   if (Object.keys(fieldErrors).length > 0) {
     return { status: 'error', message: 'Please fix the highlighted fields below.', fieldErrors };
@@ -46,40 +51,41 @@ export async function submitProjectInquiry(
 
   try {
     await sql`
-      insert into project_inquiries (name, email, company, project_type, budget, message)
-      values (${name}, ${email}, ${company || null}, ${projectType || null}, ${budget || null}, ${message})
+      insert into project_inquiries (name, email, phone, preferred_contact, company, project_type, budget, message)
+      values (${name}, ${email}, ${phone || null}, ${preferredContact}, ${company || null}, ${projectType || null}, ${budget || null}, ${message})
     `;
   } catch (err) {
     console.error('submitProjectInquiry: database insert failed', err);
     return { status: 'error', message: FALLBACK_CONTACT_MESSAGE };
   }
 
-  // Confirmation email to the customer is best-effort from here on — the
-  // inquiry is already saved, so a failure to send it shouldn't fail the
-  // whole submission.
+  // Both emails from here on are best-effort — the inquiry is already saved,
+  // so a failure to send either one shouldn't fail the whole submission.
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error('submitProjectInquiry: RESEND_API_KEY is not set, skipping confirmation email');
+    console.error('submitProjectInquiry: RESEND_API_KEY is not set, skipping emails');
   } else {
     // Resend's shared test sender — works without a verified domain, but Resend
     // will only actually deliver it to the account owner's own inbox. Swap in a
     // verified domain address via CONTACT_FROM_EMAIL for real production delivery.
     const from = process.env.CONTACT_FROM_EMAIL || 'Karuna Technologies <onboarding@resend.dev>';
-    // Replies to the confirmation land in the studio inbox, not back at the customer.
-    const replyTo = process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca';
+    const resend = new Resend(apiKey);
 
     const details = [
+      phone && `Phone: ${phone}`,
+      `Preferred contact: ${preferredContact}`,
       company && `Company: ${company}`,
       projectType && `Project type: ${projectType}`,
       budget && `Budget: ${budget}`,
     ].filter(Boolean).join('\n');
 
+    // Confirmation to the customer. Replies land in the studio inbox, not back
+    // at the customer.
     try {
-      const resend = new Resend(apiKey);
       const { error } = await resend.emails.send({
         from,
         to: email,
-        replyTo,
+        replyTo: process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca',
         subject: "We've received your project inquiry — Karuna Technologies",
         text: [
           `Hi ${name},`,
@@ -98,9 +104,37 @@ export async function submitProjectInquiry(
         ].join('\n'),
       });
 
-      if (error) console.error('submitProjectInquiry: Resend returned an error', error);
+      if (error) console.error('submitProjectInquiry: Resend returned an error (customer email)', error);
     } catch (err) {
       console.error('submitProjectInquiry: unexpected error sending confirmation email', err);
+    }
+
+    // Notification to the site owner, independent of whether the customer
+    // email above succeeded. Reply-to is the customer, so replying goes
+    // straight back to them.
+    const ownerEmail = process.env.OWNER_EMAIL;
+    if (!ownerEmail) {
+      console.error('submitProjectInquiry: OWNER_EMAIL is not set, skipping owner notification');
+    } else {
+      try {
+        const { error } = await resend.emails.send({
+          from,
+          to: ownerEmail,
+          replyTo: email,
+          subject: `New project inquiry from ${name}`,
+          text: [
+            `Name: ${name}`,
+            `Email: ${email}`,
+            details,
+            '',
+            message,
+          ].join('\n'),
+        });
+
+        if (error) console.error('submitProjectInquiry: Resend returned an error (owner email)', error);
+      } catch (err) {
+        console.error('submitProjectInquiry: unexpected error sending owner notification', err);
+      }
     }
   }
 

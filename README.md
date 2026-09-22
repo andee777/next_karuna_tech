@@ -175,31 +175,38 @@ out two independent lead-capture forms in a two-column grid at `lg` and up (form
 right; both stack to full width below `lg`, form first in DOM order):
 
 - **Project inquiry** — `ProjectForm.tsx` (Client Component, React 19's
-  `useActionState`) calls `submitProjectInquiry` in `actions.ts`.
-- **Discovery call request** — `DiscoveryCallSection.tsx` is the static intro/card
-  wrapper; `DiscoveryCallForm.tsx` is the actual form (name, email, a native `<input
-  type="date">`, and a `<Select>` of fixed time slots — not a freeform text field, and
-  not a real calendar/availability integration) that calls `submitDiscoveryCallRequest`
-  in `discovery-actions.ts`.
+  `useActionState`) calls `submitProjectInquiry` in `actions.ts`. Fields: name, email,
+  phone (optional), preferred contact method (defaults to "Email"), company, budget,
+  project type, message. Choosing "Phone" as the preferred contact method makes phone
+  required (enforced server-side).
+- **Discovery call request** — `DiscoveryCallSection.tsx` is a compact intro/card
+  wrapper (icon + heading + one-line caption — kept deliberately lightweight so this
+  column doesn't visually outweigh the main form beside it); `DiscoveryCallForm.tsx` is
+  the actual form (name, email, phone (optional), a native `<input type="date">`, and a
+  `<Select>` of fixed time slots — not a freeform text field, and not a real
+  calendar/availability integration) that calls `submitDiscoveryCallRequest` in
+  `discovery-actions.ts`.
 
-Both Server Actions follow the same two-step pattern: **the database insert is the
-source of truth; the Resend email is a best-effort confirmation on top.** Validate →
+Both Server Actions follow the same pattern: **the database insert is the source of
+truth; two Resend emails go out as best-effort courtesy sends on top.** Validate →
 insert into the relevant table (`project_inquiries` / `discovery_call_requests`, schema
 in [`db/schema.sql`](db/schema.sql), client in [`lib/db.ts`](lib/db.ts) — Neon's
 serverless HTTP driver, `@neondatabase/serverless`, a tagged-template `sql` function
 rather than a query builder) → if that insert fails or `DATABASE_URL` isn't configured,
-return the friendly error state immediately (nothing to send) → otherwise attempt the
-Resend email in a `try`/`catch` that only logs on failure, since the submission already
-succeeded once the row is saved. Follow this same save-then-notify pattern for any new
-form.
+return the friendly error state immediately (nothing to send) → otherwise attempt each
+email in its own `try`/`catch` that only logs on failure, since the submission already
+succeeded once the row is saved (one email failing doesn't block or skip the other).
+Follow this same save-then-notify pattern for any new form.
 
-The confirmation email goes **to the customer** (`to: email`, the address they typed in
-the form), not to the studio — there's no internal "new lead" notification email.
-`CONTACT_TO_EMAIL` (default `info@karunatech.ca`) is used only as the `replyTo`, so if a
-customer replies to their confirmation it lands in the studio's inbox rather than
-bouncing back to themselves. See `.env.example` for the required/optional env vars
-(`DATABASE_URL` required; `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`
-optional).
+1. **Confirmation → the customer** (`to: email`, the address they typed in). `replyTo`
+   is `CONTACT_TO_EMAIL` (default `info@karunatech.ca`), so a reply from the customer
+   lands in the studio's inbox rather than bouncing back to themselves.
+2. **Notification → the site owner** (`to: OWNER_EMAIL` — skipped, with a logged error,
+   if unset). Restates everything the customer submitted. `replyTo` is the customer's
+   own email this time, so replying from the owner's inbox goes straight to them.
+
+See `.env.example` for the required/optional env vars (`DATABASE_URL` required;
+`RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `OWNER_EMAIL` optional).
 
 We're on Neon rather than Supabase because Supabase's free tier caps you at 2 projects
 account-wide; Neon's serverless HTTP driver was also a better fit for Server Actions
@@ -235,6 +242,16 @@ The site targets everything from a 320px phone to wide desktop monitors:
 - Always sanity-check new sections at 320–375px width — the vendored components expect
   explicit pixel dimensions by default and will overflow the viewport if given a raw
   desktop-sized value.
+
+### The fixed Navbar and Radix popovers (`scrollbar-gutter`)
+
+`app/globals.css` sets `html { scrollbar-gutter: stable }`. Without it, opening any
+Radix popover (a shadcn `Select`, etc.) visibly shifts/grows the fixed `Navbar` by the
+scrollbar's width: Radix locks scroll via `overflow: hidden !important` on `<body>`,
+which — through the body→viewport overflow-propagation quirk — removes the page's
+actual scrollbar, and `Navbar`'s `inset-x-0` (`fixed`) recomputes against the now-wider
+viewport. This must be set on `html`, not `body` — the propagation quirk carries
+`overflow` but not the scrollbar-gutter reservation.
 
 ### SEO
 
