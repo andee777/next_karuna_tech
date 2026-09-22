@@ -53,31 +53,46 @@ export async function submitDiscoveryCallRequest(
     return { status: 'error', message: FALLBACK_MESSAGE };
   }
 
-  // Email notification is best-effort — the request is already saved, so a
-  // failure to notify shouldn't fail the submission.
+  // Confirmation email to the customer is best-effort — the request is
+  // already saved, so a failure to send it shouldn't fail the submission.
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error('submitDiscoveryCallRequest: RESEND_API_KEY is not set, skipping notification email');
+    console.error('submitDiscoveryCallRequest: RESEND_API_KEY is not set, skipping confirmation email');
   } else {
+    const formattedDate = new Date(`${preferredDate}T00:00:00Z`).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'UTC',
+    });
+
     try {
       const resend = new Resend(apiKey);
       const { error } = await resend.emails.send({
         from: process.env.CONTACT_FROM_EMAIL || 'Karuna Technologies <onboarding@resend.dev>',
-        to: process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca',
-        replyTo: email,
-        subject: `Discovery call request from ${name}`,
+        to: email,
+        // Replies to the confirmation land in the studio inbox, not back at the customer.
+        replyTo: process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca',
+        subject: "We've received your discovery call request — Karuna Technologies",
         text: [
-          `Name: ${name}`,
-          `Email: ${email}`,
-          `Preferred date: ${preferredDate}`,
-          `Preferred time: ${preferredTime}`,
-          notes && `Notes: ${notes}`,
-        ].filter(Boolean).join('\n'),
+          `Hi ${name},`,
+          '',
+          "Thanks for requesting a discovery call — we've got your request and will "
+            + 'confirm the time (or suggest alternatives if needed) by email within one business day.',
+          '',
+          `Requested: ${formattedDate} at ${preferredTime} (Eastern Time)`,
+          ...(notes ? [`Notes: ${notes}`] : []),
+          '',
+          "If you'd like to change anything, just reply to this email.",
+          '',
+          '— Karuna Technologies',
+        ].join('\n'),
       });
 
       if (error) console.error('submitDiscoveryCallRequest: Resend returned an error', error);
     } catch (err) {
-      console.error('submitDiscoveryCallRequest: unexpected error sending notification email', err);
+      console.error('submitDiscoveryCallRequest: unexpected error sending confirmation email', err);
     }
   }
 

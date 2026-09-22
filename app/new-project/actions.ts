@@ -54,39 +54,53 @@ export async function submitProjectInquiry(
     return { status: 'error', message: FALLBACK_CONTACT_MESSAGE };
   }
 
-  // Email notification is best-effort from here on — the inquiry is already
-  // saved, so a failure to notify shouldn't fail the whole submission.
+  // Confirmation email to the customer is best-effort from here on — the
+  // inquiry is already saved, so a failure to send it shouldn't fail the
+  // whole submission.
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error('submitProjectInquiry: RESEND_API_KEY is not set, skipping notification email');
+    console.error('submitProjectInquiry: RESEND_API_KEY is not set, skipping confirmation email');
   } else {
-    const to = process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca';
     // Resend's shared test sender — works without a verified domain, but Resend
     // will only actually deliver it to the account owner's own inbox. Swap in a
     // verified domain address via CONTACT_FROM_EMAIL for real production delivery.
     const from = process.env.CONTACT_FROM_EMAIL || 'Karuna Technologies <onboarding@resend.dev>';
+    // Replies to the confirmation land in the studio inbox, not back at the customer.
+    const replyTo = process.env.CONTACT_TO_EMAIL || 'info@karunatech.ca';
+
+    const details = [
+      company && `Company: ${company}`,
+      projectType && `Project type: ${projectType}`,
+      budget && `Budget: ${budget}`,
+    ].filter(Boolean).join('\n');
 
     try {
       const resend = new Resend(apiKey);
       const { error } = await resend.emails.send({
         from,
-        to,
-        replyTo: email,
-        subject: `New project inquiry from ${name}`,
+        to: email,
+        replyTo,
+        subject: "We've received your project inquiry — Karuna Technologies",
         text: [
-          `Name: ${name}`,
-          `Email: ${email}`,
-          company && `Company: ${company}`,
-          projectType && `Project type: ${projectType}`,
-          budget && `Budget: ${budget}`,
+          `Hi ${name},`,
           '',
+          "Thanks for reaching out — we've received your project inquiry and will "
+            + 'respond within 48 hours with a tailored plan and honest estimate.',
+          '',
+          "Here's what you sent us:",
+          '',
+          details,
           message,
-        ].filter(Boolean).join('\n'),
+          '',
+          "If you'd like to add or change anything, just reply to this email.",
+          '',
+          '— Karuna Technologies',
+        ].join('\n'),
       });
 
       if (error) console.error('submitProjectInquiry: Resend returned an error', error);
     } catch (err) {
-      console.error('submitProjectInquiry: unexpected error sending notification email', err);
+      console.error('submitProjectInquiry: unexpected error sending confirmation email', err);
     }
   }
 

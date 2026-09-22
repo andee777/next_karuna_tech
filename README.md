@@ -5,7 +5,7 @@ design, cloud hosting, workflow automation, and mobile app development. It's bui
 Next.js and the App Router: a single animated landing page (hero, services, work,
 process, testimonials, CTA) plus a `/new-project` page with two lead-capture forms — a
 project inquiry form and a discovery-call date/time request — both persisted to a Neon
-Postgres database, with an email notification sent via Resend on top.
+Postgres database, with a confirmation email sent to the customer via Resend on top.
 
 Live at [karunatech.ca](https://karunatech.ca).
 
@@ -20,7 +20,7 @@ Live at [karunatech.ca](https://karunatech.ca).
 | Animation | [Framer Motion](https://motion.dev) / `motion`, [GSAP](https://gsap.com), [Three.js](https://threejs.org) / [OGL](https://github.com/oframe/ogl) (WebGL backgrounds) |
 | Theming | [next-themes](https://github.com/pacocoursey/next-themes) (light/dark) |
 | Database | [Neon](https://neon.tech) (serverless Postgres) — stores every form submission |
-| Email | [Resend](https://resend.com) — best-effort notification when a form is submitted |
+| Email | [Resend](https://resend.com) — best-effort confirmation email to the customer on submit |
 
 ## Getting started
 
@@ -42,10 +42,10 @@ Both `/new-project` forms need a database to actually save anything:
    pooled connection string from Neon's "Connect" button).
 
 Without that set, both forms still render and validate, they just fail the final save
-with a friendly fallback message. `RESEND_API_KEY` is optional on top — it sends a
-notification email when a form is submitted, but a missing/failing send never blocks
-the submission, since the database row is already saved by that point (see
-[`app/new-project/actions.ts`](app/new-project/actions.ts) and
+with a friendly fallback message. `RESEND_API_KEY` is optional on top — it sends the
+customer a confirmation email when a form is submitted, but a missing/failing send
+never blocks the submission, since the database row is already saved by that point
+(see [`app/new-project/actions.ts`](app/new-project/actions.ts) and
 [`app/new-project/discovery-actions.ts`](app/new-project/discovery-actions.ts)).
 
 Other scripts:
@@ -183,17 +183,23 @@ right; both stack to full width below `lg`, form first in DOM order):
   in `discovery-actions.ts`.
 
 Both Server Actions follow the same two-step pattern: **the database insert is the
-source of truth; the Resend email is a best-effort notification on top.** Validate →
+source of truth; the Resend email is a best-effort confirmation on top.** Validate →
 insert into the relevant table (`project_inquiries` / `discovery_call_requests`, schema
 in [`db/schema.sql`](db/schema.sql), client in [`lib/db.ts`](lib/db.ts) — Neon's
 serverless HTTP driver, `@neondatabase/serverless`, a tagged-template `sql` function
 rather than a query builder) → if that insert fails or `DATABASE_URL` isn't configured,
-return the friendly error state immediately (nothing to notify about) → otherwise
-attempt the Resend email in a `try`/`catch` that only logs on failure, since the
-submission already succeeded once the row is saved. See `.env.example` for the
-required/optional env vars (`DATABASE_URL` required; `RESEND_API_KEY`,
-`CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL` optional). Follow this same save-then-notify
-pattern for any new form.
+return the friendly error state immediately (nothing to send) → otherwise attempt the
+Resend email in a `try`/`catch` that only logs on failure, since the submission already
+succeeded once the row is saved. Follow this same save-then-notify pattern for any new
+form.
+
+The confirmation email goes **to the customer** (`to: email`, the address they typed in
+the form), not to the studio — there's no internal "new lead" notification email.
+`CONTACT_TO_EMAIL` (default `info@karunatech.ca`) is used only as the `replyTo`, so if a
+customer replies to their confirmation it lands in the studio's inbox rather than
+bouncing back to themselves. See `.env.example` for the required/optional env vars
+(`DATABASE_URL` required; `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`
+optional).
 
 We're on Neon rather than Supabase because Supabase's free tier caps you at 2 projects
 account-wide; Neon's serverless HTTP driver was also a better fit for Server Actions

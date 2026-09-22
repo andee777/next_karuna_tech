@@ -9,8 +9,8 @@ built with Next.js App Router: a single animated landing page (hero, services, w
 process, testimonials, CTA) plus a `/new-project` page with two lead-capture forms
 (project inquiry, discovery-call date/time request). There is no auth. Both forms
 persist to a Neon Postgres database via Server Actions, using the serverless HTTP
-driver — the database row is the source of truth; Resend sends a best-effort
-notification email on top.
+driver — the database row is the source of truth; Resend sends the customer a
+best-effort confirmation email on top (never a notification to the studio).
 
 ## Commands
 
@@ -129,14 +129,20 @@ full width below `lg`, form first in DOM order):
 
 **Both Server Actions follow the same pattern — replicate it for any new form:**
 validate → `getDb()` (`lib/db.ts`) → if `null` (`DATABASE_URL` unset) or the insert
-throws, return the fallback error state immediately, nothing to notify about →
-otherwise the row is saved, so the submission has already succeeded; attempt
+throws, return the fallback error state immediately, nothing to send → otherwise the
+row is saved, so the submission has already succeeded; attempt
 `resend.emails.send(...)` in its own `try`/`catch` that only `console.error`s on
 failure, never changes the returned state. The database insert is the source of truth;
-Resend is a courtesy notification. `.env.example` documents `DATABASE_URL` (required),
-and `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL` (optional). Table
-schemas: `db/schema.sql` — run it manually against the database; nothing in this repo
-runs migrations automatically.
+Resend is a courtesy confirmation. Table schemas: `db/schema.sql` — run it manually
+against the database; nothing in this repo runs migrations automatically.
+
+**The confirmation email goes to the customer (`to: email`), never to the studio.**
+There is no "new lead" notification email — `CONTACT_TO_EMAIL` (default
+`info@karunatech.ca`) is used only as the `replyTo` on the customer's confirmation, so a
+reply lands in the studio's inbox instead of bouncing back to the customer themselves.
+Don't reintroduce a studio-facing notification email without being asked — that was
+deliberately removed. `.env.example` documents `DATABASE_URL` (required), and
+`RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL` (optional).
 
 `lib/db.ts` uses `@neondatabase/serverless`'s `neon()` — a tagged-template `sql`
 function over HTTP, not a connection pool — so Server Actions (one-shot serverless
