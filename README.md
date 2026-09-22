@@ -3,8 +3,9 @@
 The public marketing website for **Karuna Technologies**, a software studio offering web
 design, cloud hosting, workflow automation, and mobile app development. It's built with
 Next.js and the App Router: a single animated landing page (hero, services, work,
-process, testimonials, CTA) plus a `/new-project` inquiry form that emails submissions
-via Resend.
+process, testimonials, CTA) plus a `/new-project` page with two lead-capture forms — a
+project inquiry form and a discovery-call date/time request — both persisted to a Neon
+Postgres database, with an email notification sent via Resend on top.
 
 Live at [karunatech.ca](https://karunatech.ca).
 
@@ -18,7 +19,8 @@ Live at [karunatech.ca](https://karunatech.ca).
 | Components | [shadcn/ui](https://ui.shadcn.com) primitives + hand-rolled animated components sourced from [reactbits.dev](https://reactbits.dev) |
 | Animation | [Framer Motion](https://motion.dev) / `motion`, [GSAP](https://gsap.com), [Three.js](https://threejs.org) / [OGL](https://github.com/oframe/ogl) (WebGL backgrounds) |
 | Theming | [next-themes](https://github.com/pacocoursey/next-themes) (light/dark) |
-| Email | [Resend](https://resend.com) via a Server Action, for the `/new-project` form |
+| Database | [Neon](https://neon.tech) (serverless Postgres) — stores every form submission |
+| Email | [Resend](https://resend.com) — best-effort notification when a form is submitted |
 
 ## Getting started
 
@@ -30,11 +32,21 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000). The page hot-reloads as you edit
 files under `app/` and `components/`.
 
-The `/new-project` form needs a Resend API key to actually send email — copy
-[`.env.example`](.env.example) to `.env.local` and fill in `RESEND_API_KEY`. Without it,
-the page still works and validates normally, it just fails the final send with a
-friendly fallback message instead of delivering the email (see
-[`app/new-project/actions.ts`](app/new-project/actions.ts)).
+Both `/new-project` forms need a database to actually save anything:
+
+1. Create a project at [neon.tech](https://neon.tech).
+2. Run [`db/schema.sql`](db/schema.sql) against it (Neon's SQL Editor, or
+   `psql "$DATABASE_URL" -f db/schema.sql`) to create the `project_inquiries` and
+   `discovery_call_requests` tables.
+3. Copy [`.env.example`](.env.example) to `.env.local` and fill in `DATABASE_URL` (the
+   pooled connection string from Neon's "Connect" button).
+
+Without that set, both forms still render and validate, they just fail the final save
+with a friendly fallback message. `RESEND_API_KEY` is optional on top — it sends a
+notification email when a form is submitted, but a missing/failing send never blocks
+the submission, since the database row is already saved by that point (see
+[`app/new-project/actions.ts`](app/new-project/actions.ts) and
+[`app/new-project/discovery-actions.ts`](app/new-project/discovery-actions.ts)).
 
 Other scripts:
 
@@ -51,10 +63,13 @@ next_karuna_tech/
 ├── app/
 │   ├── layout.tsx          # Root layout: fonts, SEO metadata, Navbar/Footer shell
 │   ├── page.tsx             # Homepage — composes the section components below
-│   ├── new-project/         # /new-project — project inquiry form
-│   │   ├── page.tsx          # Page shell + metadata (Server Component)
-│   │   ├── ProjectForm.tsx   # The form itself (Client Component, useActionState)
-│   │   └── actions.ts        # 'use server' — validates + emails via Resend
+│   ├── new-project/         # /new-project — two lead-capture forms
+│   │   ├── page.tsx                  # Page shell + metadata (Server Component)
+│   │   ├── ProjectForm.tsx           # Project inquiry form (Client Component)
+│   │   ├── actions.ts                # 'use server' — validates, saves to Neon, emails via Resend
+│   │   ├── DiscoveryCallSection.tsx  # Right-column panel wrapping the form below
+│   │   ├── DiscoveryCallForm.tsx     # Date/time request form (Client Component)
+│   │   └── discovery-actions.ts      # 'use server' — same pattern, its own table
 │   ├── sitemap.ts           # Generates /sitemap.xml
 │   └── globals.css          # Tailwind v4 entry point, theme tokens (light/dark), custom keyframes
 ├── components/
@@ -79,7 +94,10 @@ next_karuna_tech/
 ├── hooks/
 │   └── useMediaQuery.ts       # Client-side matchMedia hook, used for the isMobile flag
 ├── lib/
-│   └── utils.ts               # `cn()` — clsx + tailwind-merge, used by every component
+│   ├── utils.ts               # `cn()` — clsx + tailwind-merge, used by every component
+│   └── db.ts                  # Server-only Neon client (DATABASE_URL)
+├── db/
+│   └── schema.sql              # Run against Neon to create the two tables
 ├── docs/
 │   └── folder-structure.md    # Auto-generated tree of this repo (see scripts/ below)
 ├── scripts/
@@ -149,19 +167,52 @@ network request, no per-card asset to source. `TiltedCard` (the 3D mouse-tilt ve
 component this section used to render project photos in) was removed from the repo
 entirely once this was its only caller.
 
-### The `/new-project` inquiry form
+### The `/new-project` page: two forms, one storage pattern
 
-`app/new-project/page.tsx` is a Server Component (so it can export `metadata`) that
-renders `ProjectForm.tsx`, a Client Component using React 19's `useActionState` to call
-the `submitProjectInquiry` Server Action in `actions.ts`. The action validates the
-fields server-side, then sends the message via [Resend](https://resend.com). If
-`RESEND_API_KEY` isn't set (or the send fails), it returns a friendly error state
-instead of throwing — see `.env.example` for the required/optional env vars
-(`RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`).
+`app/new-project/page.tsx` is a Server Component (so it can export `metadata`) laying
+out two independent lead-capture forms in a two-column grid at `lg` and up (form
+`lg:col-span-3` on the left, discovery call `lg:col-span-2` and `lg:sticky` on the
+right; both stack to full width below `lg`, form first in DOM order):
+
+- **Project inquiry** — `ProjectForm.tsx` (Client Component, React 19's
+  `useActionState`) calls `submitProjectInquiry` in `actions.ts`.
+- **Discovery call request** — `DiscoveryCallSection.tsx` is the static intro/card
+  wrapper; `DiscoveryCallForm.tsx` is the actual form (name, email, a native `<input
+  type="date">`, and a `<Select>` of fixed time slots — not a freeform text field, and
+  not a real calendar/availability integration) that calls `submitDiscoveryCallRequest`
+  in `discovery-actions.ts`.
+
+Both Server Actions follow the same two-step pattern: **the database insert is the
+source of truth; the Resend email is a best-effort notification on top.** Validate →
+insert into the relevant table (`project_inquiries` / `discovery_call_requests`, schema
+in [`db/schema.sql`](db/schema.sql), client in [`lib/db.ts`](lib/db.ts) — Neon's
+serverless HTTP driver, `@neondatabase/serverless`, a tagged-template `sql` function
+rather than a query builder) → if that insert fails or `DATABASE_URL` isn't configured,
+return the friendly error state immediately (nothing to notify about) → otherwise
+attempt the Resend email in a `try`/`catch` that only logs on failure, since the
+submission already succeeded once the row is saved. See `.env.example` for the
+required/optional env vars (`DATABASE_URL` required; `RESEND_API_KEY`,
+`CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL` optional). Follow this same save-then-notify
+pattern for any new form.
+
+We're on Neon rather than Supabase because Supabase's free tier caps you at 2 projects
+account-wide; Neon's serverless HTTP driver was also a better fit for Server Actions
+running as one-shot serverless functions than maintaining a persistent connection pool
+would have been.
 
 A `'use server'` file may only export async functions — no plain constants/objects —
-so the form's initial state literal lives in `ProjectForm.tsx` itself rather than being
-exported from `actions.ts`.
+so each form's initial state literal lives in the form component itself rather than
+being exported from its actions file.
+
+### Wiring up CTA buttons: shadcn `Button` + `asChild`
+
+Buttons that should navigate (as opposed to trigger client-side logic) use the shadcn
+`Button` component's `asChild` prop with a single child `<Link>` (cross-page) or `<a>`
+(same-page anchor), e.g. `HeroSection`'s "View Our Work" / "Book a Discovery Call".
+`asChild` swaps the rendered element from `<button>` to whatever's passed as a child via
+Radix's `Slot`, so the button keeps its styling while behaving as a real link (keyboard
+nav, right-click-to-open-in-new-tab, no `onClick`-based navigation). Don't render a
+`<Button>` with no `href`/`onClick` at all — it silently does nothing when clicked.
 
 ### Responsive design
 

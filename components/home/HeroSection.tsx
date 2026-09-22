@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import Particles from '@/components/Particles';
 import GradientText from '@/components/GradientText';
 import { Button } from '@/components/ui/button';
@@ -51,11 +52,11 @@ export default function HeroSection({ mounted, isMobile }: HeroSectionProps) {
           to cloud infrastructure and intelligent automation.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" className="rounded-full px-8 py-6 text-base">
-            View Our Work
+          <Button asChild size="lg" className="rounded-full px-8 py-6 text-base">
+            <Link href="/#work">View Our Work</Link>
           </Button>
-          <Button size="lg" variant="outline" className="rounded-full px-8 py-6 text-base border-white/20 hover:bg-white/5">
-            Book a Discovery Call
+          <Button asChild size="lg" variant="outline" className="rounded-full px-8 py-6 text-base border-white/20 hover:bg-white/5">
+            <Link href="/new-project">Book a Discovery Call</Link>
           </Button>
         </div>
       </div>

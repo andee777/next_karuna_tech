@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import ProjectForm from './ProjectForm';
+import DiscoveryCallSection from './DiscoveryCallSection';
 
 export const metadata: Metadata = {
   title: 'Start a New Project',
@@ -16,8 +17,8 @@ export default function NewProjectPage() {
         <div className="w-[600px] h-[600px] rounded-full bg-indigo-600/10 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 container mx-auto px-6 max-w-2xl">
-        <div className="text-center mb-12">
+      <div className="relative z-10 container mx-auto px-6 max-w-5xl">
+        <div className="text-center mb-12 max-w-2xl mx-auto">
           <p className="text-xs font-semibold tracking-[0.25em] uppercase text-indigo-400 mb-4">
             Let&apos;s Build Together
           </p>
@@ -30,8 +31,13 @@ export default function NewProjectPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/8 bg-white/3 p-6 sm:p-10">
-          <ProjectForm />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-10 items-start">
+          <div className="lg:col-span-3 rounded-2xl border border-white/8 bg-white/3 p-6 sm:p-10">
+            <ProjectForm />
+          </div>
+          <div className="lg:col-span-2">
+            <DiscoveryCallSection />
+          </div>
         </div>
       </div>
     </section>

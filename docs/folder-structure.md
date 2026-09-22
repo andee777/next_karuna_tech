@@ -7,6 +7,9 @@ next_karuna_tech/
 ├── app
 │   ├── new-project
 │   │   ├── actions.ts
+│   │   ├── discovery-actions.ts
+│   │   ├── DiscoveryCallForm.tsx
+│   │   ├── DiscoveryCallSection.tsx
 │   │   ├── page.tsx
 │   │   └── ProjectForm.tsx
 │   ├── favicon.ico
@@ -43,11 +46,14 @@ next_karuna_tech/
 │   ├── StructuredData.tsx
 │   ├── theme-provider.tsx
 │   └── theme-toggle.tsx
+├── db
+│   └── schema.sql
 ├── docs
 │   └── folder-structure.md
 ├── hooks
 │   └── useMediaQuery.ts
 ├── lib
+│   ├── db.ts
 │   └── utils.ts
 ├── public
 │   ├── file.svg
@@ -60,6 +66,7 @@ next_karuna_tech/
 │   ├── folder_tree_watcher.py
 │   └── generate_folder_tree.py
 ├── .env.example
+├── .env.local
 ├── .gitignore
 ├── AGENTS.md
 ├── CLAUDE.md

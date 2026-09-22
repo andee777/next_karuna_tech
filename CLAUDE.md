@@ -6,10 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The marketing website for Karuna Technologies (karunatech.ca), a software studio. It's
 built with Next.js App Router: a single animated landing page (hero, services, work,
-process, testimonials, CTA) plus a `/new-project` inquiry form. There is no database or
-auth, and no persistent backend state — the one piece of server logic is the
-`/new-project` form's Server Action, which sends an email via Resend and holds no state
-of its own.
+process, testimonials, CTA) plus a `/new-project` page with two lead-capture forms
+(project inquiry, discovery-call date/time request). There is no auth. Both forms
+persist to a Neon Postgres database via Server Actions, using the serverless HTTP
+driver — the database row is the source of truth; Resend sends a best-effort
+notification email on top.
 
 ## Commands
 
@@ -110,22 +111,56 @@ request, no per-project art to source when adding a 5th project — just add an 
 both `featuredProjects` (`components/home/data.ts`) and `PROJECT_META`
 (`WorkSection.tsx`).
 
-### The `/new-project` inquiry form
+### The `/new-project` page: two forms, one save-then-notify pattern
 
 `app/new-project/page.tsx` is a Server Component (needed so it can `export const
-metadata`) that renders `ProjectForm.tsx`, a Client Component. The form uses React 19's
-`useActionState` to call the `submitProjectInquiry` Server Action exported from
-`actions.ts` (`'use server'`), which validates fields server-side and sends the message
-via `resend.emails.send(...)`. If `RESEND_API_KEY` is unset or the send throws/errors,
-the action returns `{ status: 'error', message: <fallback copy> }` rather than letting
-the exception propagate — the page must keep working (with a "please email us directly"
-fallback) even before the env var is configured. `.env.example` documents
-`RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`.
+metadata`) laying out two independent forms in a two-column grid at `lg` and up (form
+`lg:col-span-3` left, discovery call `lg:col-span-2` + `lg:sticky` right; both stack to
+full width below `lg`, form first in DOM order):
+
+- **`ProjectForm.tsx`** (Client Component, `useActionState`) → `submitProjectInquiry`
+  in `actions.ts`.
+- **`DiscoveryCallSection.tsx`** (static intro/card) wraps **`DiscoveryCallForm.tsx`**
+  (Client Component) → `submitDiscoveryCallRequest` in `discovery-actions.ts`. The form
+  collects name, email, a native `<input type="date">`, and a `<Select>` of fixed time
+  slots (`TIME_SLOTS` in `DiscoveryCallForm.tsx`) — not a real calendar/availability
+  integration, just a fixed set of choices; the copy says "we'll confirm by email" for
+  exactly that reason.
+
+**Both Server Actions follow the same pattern — replicate it for any new form:**
+validate → `getDb()` (`lib/db.ts`) → if `null` (`DATABASE_URL` unset) or the insert
+throws, return the fallback error state immediately, nothing to notify about →
+otherwise the row is saved, so the submission has already succeeded; attempt
+`resend.emails.send(...)` in its own `try`/`catch` that only `console.error`s on
+failure, never changes the returned state. The database insert is the source of truth;
+Resend is a courtesy notification. `.env.example` documents `DATABASE_URL` (required),
+and `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL` (optional). Table
+schemas: `db/schema.sql` — run it manually against the database; nothing in this repo
+runs migrations automatically.
+
+`lib/db.ts` uses `@neondatabase/serverless`'s `neon()` — a tagged-template `sql`
+function over HTTP, not a connection pool — so Server Actions (one-shot serverless
+functions) never hold an open Postgres connection. Write queries as
+`` await sql`insert into t (a, b) values (${a}, ${b})` ``; interpolated values are
+parameterized automatically, so this is safe against SQL injection. **We're on Neon,
+not Supabase**, because Supabase's free tier caps out at 2 projects account-wide and
+this account had already hit that limit — don't reintroduce a Supabase dependency
+without checking that's still the constraint.
 
 Gotcha: a `'use server'` file may only export async functions — not plain
-constants/objects. That's why the form's initial `ProjectInquiryState` literal is
-defined in `ProjectForm.tsx` itself (only the *type* is imported from `actions.ts`,
-via `import type`) rather than exported from the action file.
+constants/objects. That's why each form's initial state literal is defined in the form
+component itself (only the *type* is imported from the actions file, via `import type`)
+rather than exported from the action file.
+
+### Wiring up CTA buttons: shadcn `Button` + `asChild`
+
+Buttons that should navigate use the shadcn `Button` component's `asChild` prop with a
+single child `<Link>` (cross-page) or `<a>` (same-page anchor) — e.g. `HeroSection`'s
+"View Our Work" / "Book a Discovery Call". `asChild` swaps the rendered element from
+`<button>` to whatever's passed as a child via Radix's `Slot`, so the button keeps its
+styling while behaving as a real link. Don't render a `<Button>` with no `href`/`onClick`
+— it silently does nothing when clicked (this was previously the case for both Hero
+buttons).
 
 ### shadcn/ui setup
 
